@@ -43,7 +43,8 @@ int msr_pthread::t_id () const
   return m_t;
 }
 
-void msr_pthread::mult_vector (const double *in, double *out)
+void msr_pthread::mult_vector (const std::vector<double> &in,
+                               std::vector<double> &out /*must be resized to n*/)
 {
   int n = m_matrix->n ();
   int work = n / m_p;
@@ -68,14 +69,14 @@ void msr_pthread::mult_vector (const double *in, double *out)
         s += aa (ja_iter) * in[ja (ja_iter)];
 
       s += aa (i) * in[i];
-      m_shared_buf[i] = s;
+      (*m_shared_buf)[i] = s;
     }
 
 
   pthread_barrier_wait (m_barrier);
 
   for (int i = 0; i < n; i++)
-    out[i] = m_shared_buf[i];
+    out[i] = (*m_shared_buf)[i];
 
   pthread_barrier_wait (m_barrier);
 }

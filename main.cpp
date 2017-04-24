@@ -1,7 +1,8 @@
 #include "sparse_matrix/msr_matrix.h"
 #include "sparse_matrix/msr_pthread.h"
-#include "pthread.h"
+#include <pthread.h>
 #include "workers/solver.h"
+#include "containers/cycle_buf.h"
 #include <cstdlib>
 
 using namespace std;
@@ -30,7 +31,7 @@ int main (int argc, char *argv[])
   pthread_barrier_t barrier;
   pthread_barrier_init (&barrier, NULL, p);
   pthread_t pt;
-  double *buf = new double[5];
+  std::vector<double> buf (5);
 
   msr_pthread_initializer *initers = new msr_pthread_initializer[p];
 
@@ -39,7 +40,7 @@ int main (int argc, char *argv[])
 
       initers[t].matrix = &msr;
       initers[t].p = p;
-      initers[t].buf = buf;
+      initers[t].buf = &buf;
       initers[t].barrier = &barrier;
       initers[t].t = t;
 
@@ -47,9 +48,26 @@ int main (int argc, char *argv[])
     }
   initers[0].matrix = &msr;
   initers[0].p = p;
-  initers[0].buf = buf;
+  initers[0].buf = &buf;
   initers[0].barrier = &barrier;
   initers[0].t = 0;
   solve (initers + 0);
+
+  cycle_buf<int> test_buf (5);
+  for (int i = 1; i < 9; i++)
+    {
+      test_buf.insert (i);
+
+      test_buf.to_start ();
+
+      int k = 0;
+      while (!test_buf.is_loop_done ())
+        {
+          int j = test_buf.get_next ();
+          printf ("buf[%d] = %d\n", k, j);
+          k++;
+        }
+      printf ("------------\n");
+    }
   return 0;
 }

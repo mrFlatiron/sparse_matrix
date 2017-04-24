@@ -1,5 +1,6 @@
 #include "sparse_matrix/msr_pthread.h"
-#include "pthread.h"
+#include "containers/cycle_buf.h"
+#include <pthread.h>
 #include <cstdio>
 
 void *solve (void *args)
@@ -8,8 +9,8 @@ void *solve (void *args)
   msr_pthread handler (*initer);
 
   printf ("thread - %d\n", handler.t_id ());
-  double in[] = {1, 2, 3, 4, 5};
-  double out[5];
+  std::vector<double> in = {1, 2, 3, 4, 5};
+  std::vector<double> out (5);
 
   handler.mult_vector (in, out);
 
@@ -18,4 +19,6 @@ void *solve (void *args)
       for (int i = 0; i < 5; i++)
         printf ("out[%d] = %.3lf\n", i, out[i]);
     }
+
+
 }

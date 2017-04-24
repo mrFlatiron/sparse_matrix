@@ -11,8 +11,7 @@ private:
   int m_capacity;
   int m_size;
   int m_pos;
-  bool m_at_start;
-  int m_vals_shown;
+  int m_vals_looped;
   int m_oldest;
   int m_newest;
   std::vector<T> m_vals;
@@ -74,7 +73,7 @@ T &cycle_buf<T>::get_next ()
 
   int ret_pos;
 
-  if (!m_vals_shown)
+  if (!m_vals_looped)
     {
       ret_pos = m_pos;
     }
@@ -85,21 +84,21 @@ T &cycle_buf<T>::get_next ()
     }
 
 
-  m_vals_shown++;
+  m_vals_looped++;
   return m_vals[ret_pos];
 }
 
 template <class T>
 void cycle_buf<T>::to_start ()
 {
-  m_vals_shown = 0;
+  m_vals_looped = 0;
   m_pos = m_oldest;
 }
 
 template <class T>
 bool cycle_buf<T>::is_loop_done () const
 {
-  return m_vals_shown == m_size;
+  return m_vals_looped == m_size;
 }
 
 template <class T>
@@ -136,7 +135,7 @@ cycle_buf<T>::cycle_buf (const int capacity) :
   m_size (0),
   m_pos (0),
   m_at_start (false),
-  m_vals_shown (0),
+  m_vals_looped (0),
   m_oldest (0),
   m_newest (0)
 {

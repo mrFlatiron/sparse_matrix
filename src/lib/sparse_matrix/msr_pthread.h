@@ -37,7 +37,7 @@ public:
   int t_id () const;
   void mult_vector (const std::vector<double> &in, std::vector<double> &out /*must be resized to n*/);
   void dqgmres_solve (const preconditioner_type precond_type, double *rhs, const int max_iter,
-                      const double stop_criterion);
+                      const double stop_criterion, std::vector<double> &workspace);
 private:
   void synchronize ();
 };

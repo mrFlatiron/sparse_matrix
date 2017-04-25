@@ -29,7 +29,7 @@ public:
   bool is_at_newest () const;
 };
 
-#endif // CYCLE_BUF_H
+
 
 template <class T>
 cycle_buf<T>::~cycle_buf ()
@@ -134,14 +134,13 @@ template <class T>
 cycle_buf<T>::cycle_buf (const int capacity) :
   m_size (0),
   m_pos (0),
-  m_at_start (false),
   m_vals_looped (0),
   m_oldest (0),
   m_newest (0)
 {
   if (capacity <= 0)
     {
-      fprintf (stderr, "WARNING: cycle_buf::cycle_buf: size <= 0. Assuming size = 1\n", capacity);
+      fprintf (stderr, "WARNING: cycle_buf::cycle_buf: size <= 0. Assuming size = 1\n");
       m_capacity = 1;
     }
   else
@@ -149,3 +148,4 @@ cycle_buf<T>::cycle_buf (const int capacity) :
 
   m_vals.resize (m_capacity);
 }
+#endif // CYCLE_BUF_H

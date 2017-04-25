@@ -1,5 +1,6 @@
 #include "msr_matrix.h"
 #include <cmath>
+#include <cstdio>
 
 msr_matrix::msr_matrix ()
 {
@@ -116,9 +117,30 @@ int msr_matrix::n () const
   return m_n;
 }
 
+void msr_matrix::set_n (const int n)
+{
+  if (n < 0)
+    {
+      fprintf (stderr, "set_n (%d): %d < 0\n", n, n);
+    }
+  m_n = n;
+}
+
 int msr_matrix::arr_size () const
 {
   return m_arr_size;
+}
+
+void msr_matrix::set_arr_size (const int size)
+{
+  if (size < 0)
+    {
+      fprintf (stderr, "set_arr_size (%d): %d < 0\n", size, size);
+    }
+  m_arr_size = size;
+  m_aa.resize (size);
+  m_ja.resize (size);
+
 }
 
 double msr_matrix::aa (const int i) const
@@ -126,9 +148,32 @@ double msr_matrix::aa (const int i) const
   return m_aa[i];
 }
 
+void msr_matrix::aa (const int i, const double val)
+{
+  m_aa[i] = val;
+}
+
 int msr_matrix::ja (const int i) const
 {
   return m_ja[i];
+}
+
+void msr_matrix::ja (const int i, const double val)
+{
+  m_ja[i] = val;
+}
+
+void msr_matrix::set_diagonal (const std::vector<double> &diag_vals)
+{
+  m_n = diag_vals.size ();
+  m_arr_size = m_n + 1;
+  m_aa.resize (m_arr_size);
+  m_ja.resize (m_arr_size, m_n);
+
+  for (int i = 0; i < m_n; i++)
+    {
+      m_aa[i] = diag_vals[i];
+    }
 }
 
 

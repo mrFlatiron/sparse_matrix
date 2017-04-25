@@ -4,7 +4,7 @@
 #include <vector>
 #include <cstdio>
 
-class msr_pthread;
+class msr_thread_dqgmres_solver;
 
 class msr_matrix
 {
@@ -14,15 +14,20 @@ private:
   std::vector<double> m_aa;
   std::vector<int> m_ja;
 public:
-//  friend class msr_pthread;
+  friend class msr_thread_dqgmres_solver;
   msr_matrix ();
   ~msr_matrix ();
   void dump (FILE *fout = stdout);
   void convert (const int n, std::vector<double> matrix);
   int n () const;
+  void set_n (const int n);
   int arr_size () const;
+  void set_arr_size (const int size);
   double aa (const int i) const;
+  void aa (const int i, const double val);
   int ja (const int i) const;
+  void ja (const int i, const double val);
+  void set_diagonal (const std::vector<double> &diag_vals);
 private:
   void print_row (FILE *fout, const int i, const int row_begin, const int row_end);
   void get_ja_row_bounds (const int i, int &begin, int &end);

@@ -1,5 +1,5 @@
 #include "sparse_matrix/msr_matrix.h"
-#include "sparse_matrix/msr_pthread.h"
+#include "sparse_matrix/msr_thread_dqgmres_solver.h"
 #include <pthread.h>
 #include "workers/solver.h"
 #include "containers/cycle_buf.h"
@@ -7,11 +7,14 @@
 
 using namespace std;
 
-const int max_iter = 100;
-const double stop_criterion = 1e-6;
+
 
 int main (int argc, char *argv[])
 {
+  const int max_iter = 100;
+  const double stop_criterion = 1e-6;
+  const int n = 5;
+
   if (argc < 3)
     {
       printf ("Usage : %s p, dim\n", argv[0]);
@@ -27,11 +30,11 @@ int main (int argc, char *argv[])
   int dim = atoi (argv[2]);
   if (dim <= 0)
     {
-      printf ("Wrong d\n");
+      printf ("Wrong dim\n");
       return 0;
     }
   msr_matrix msr;
-  msr.convert (5, {1, 0, 0, 2, 0,
+  msr.convert (n, {1, 0, 0, 2, 0,
                    3, 4, 0, 0, 0,
                    0, 0, 7, 0, 0,
                    8, 9, 10, 11, 0,
@@ -43,13 +46,14 @@ int main (int argc, char *argv[])
   pthread_barrier_t barrier;
   pthread_barrier_init (&barrier, NULL, p);
   pthread_t pt;
-  std::vector<double> buf (5);
-  std::vector<double> v1 (5), v2 (5), v3 (5), p_sized (p);
+  std::vector<double> buf (n);
+  std::vector<double> v1 (n), v2 (n), v3 (n), p_sized (p);
   std::vector<double> rhs ({1, 2, 3, 4, 5});
 
-  cycle_buf<std::vector<double>> basis (5);
-  cycle_buf<std::vector<double>> basis_derivs (5);
-  cycle_buf<std::vector<double>> turns (5);
+  cycle_buf<std::vector<double>> basis (dim);
+  cycle_buf<std::vector<double>> basis_derivs (dim);
+  cycle_buf<std::vector<double>> turns (dim);
+  std::vector<double>> hessenberg (dim + 2);
 
 {
   std::vector<msr_thread_dqgmres_solver> handlers;

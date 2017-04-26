@@ -1,77 +1,6 @@
-#include "msr_pthread.h"
-
-
-msr_thread_handler::msr_thread_handler (const int t, const int p,
-                                        pthread_barrier_t *barrier,
-                                        std::vector<double> &shared_buf, msr_matrix &matrix) :
-  thread_handler (t, p, barrier),
-  m_matrix (matrix),
-  m_shared_buf (shared_buf)
-{
-
-}
-
-msr_thread_handler::~msr_thread_handler ()
-{
-
-}
-
-double msr_thread_handler::aa (const int i) const
-{
-  return m_matrix.aa (i);
-}
-
-void msr_thread_handler::aa (const int i, const double val)
-{
-  m_matrix.aa (i, val);
-}
-
-int msr_thread_handler::ja (const int i) const
-{
-  return m_matrix.ja (i);
-}
-
-void msr_thread_handler::ja (const int i, const double val)
-{
-  m_matrix.ja (i, val);
-}
-
-std::vector<double> &msr_thread_handler::shared_ref () const
-{
-  return m_shared_buf;
-}
-
-msr_matrix &msr_thread_handler::matrix () const
-{
-  return m_matrix;
-}
-
-void msr_thread_handler::mult_vector (const msr_matrix &shared_matrix, const std::vector<double> &in,
-                               std::vector<double> &out /*must be resized to n*/)
-{
-  int n = shared_matrix.n ();
-  int i1, work;
-
-  divide_work (n, i1, work);
-
-  for (int i = i1; i < i1 + work; i++)
-    {
-      double s = 0;
-      for (int ja_iter = shared_matrix.ja (i); ja_iter < shared_matrix.ja (i + 1); ja_iter++)
-        s += shared_matrix.aa (ja_iter) * in[shared_matrix.ja (ja_iter)];
-
-      s += shared_matrix.aa (i) * in[i];
-      m_shared_buf[i] = s;
-    }
-
-
-  barrier_wait ();
-
-  for (int i = 0; i < n; i++)
-    out[i] = m_shared_buf[i];
-
-  barrier_wait ();
-}
+#include "msr_thread_dqgmres_solver.h"
+#include "msr_matrix.h"
+#include "threads/thread_vector_utils.h"
 
 msr_thread_dqgmres_solver::msr_thread_dqgmres_solver (const int t, const int p,
                                                       pthread_barrier_t *barrier,
@@ -86,8 +15,9 @@ msr_thread_dqgmres_solver::msr_thread_dqgmres_solver (const int t, const int p,
                                                       cycle_buf<std::vector<double>> &basis_buf,
                                                       cycle_buf<std::vector<double>> &basis_derivs_buf,
                                                       cycle_buf<std::vector<double>> &turns_buf,
+                                                     std::vector<double> &hessenberg_buf,
                                                       std::vector<double> &p_sized_buf,
-                                                      std::vector<double> &v1_buf,
+                                                      std::vector<double> &x,
                                                       std::vector<double> &v2_buf,
                                                       std::vector<double> &v3_buf):
   msr_thread_handler (t, p, barrier, shared_buf, matrix),
@@ -100,11 +30,13 @@ msr_thread_dqgmres_solver::msr_thread_dqgmres_solver (const int t, const int p,
   m_basis (basis_buf),
   m_basis_derivs (basis_derivs_buf),
   m_turns (turns_buf),
+  m_hessenberg (hessenberg_buf),
   m_p_sized_buf (p_sized_buf),
-  m_x (v1_buf),
+  m_x (x),
   m_v2 (v2_buf),
   m_v3 (v3_buf)
 {
+
 
 }
 
@@ -122,9 +54,33 @@ msr_matrix &msr_thread_dqgmres_solver::precond () const
 
 
 
-void msr_thread_dqgmres_solver::dqgmres_solve ()
+solver_state msr_thread_dqgmres_solver::dqgmres_solve (const int cur_iter)
 {
+  const double EPS = 1e-15;
+  std::vector<double> &r = m_rhs;
+  compute_preconditioner ();
+  apply_preconditioner ();
+  mult_vector_shared_out (m_precond, m_x, m_v2);
+  thread_utils::lin_combination_1 (*this, r, m_v2, -1);
+  double g1, g2;
+  g1 = thread_utils::l2_norm (*this, r, m_shared_buf);
 
+  if (g1 < EPS)
+    return solver_state::OK;
+
+  thread_utils::mult_vector_coef (*this, r, 1 / g1);
+
+  if (t_id () == 0)
+    {
+      m_basis.insert (r);
+    }
+
+  barrier_wait ();
+
+  for (int iter = 0; iter < m_max_iter; iter++)
+    {
+      compute_hessenberg_col (iter);
+    }
 }
 
 void msr_thread_dqgmres_solver::compute_preconditioner ()
@@ -174,4 +130,51 @@ void msr_thread_dqgmres_solver::apply_preconditioner ()
       }
     }
   return;
+}
+
+int msr_thread_dqgmres_solver::compute_hessenberg_col (const int cur_iter)
+{
+  int h_iter = 1;
+
+  mult_vector_shared_out (matrix (), m_basis.get_newest (), m_v2);
+  mult_vector_shared_out (precond (), m_v2, m_v3);
+
+
+  if (t_id () == 0)
+    m_basis.to_start ();
+
+  barrier_wait ();
+
+  while (!m_basis.loop_done ())
+    {
+      if (t_id () == 0)
+        m_v2 = m_basis.get_next ();
+
+      double h = thread_utils::dot_product (*this, m_v2, m_v3, m_p_sized_buf);
+
+      if (t_id () == 0)
+        m_hessenberg[h_iter] = h;
+
+      thread_utils::lin_combination_1 (*this, m_v3, m_v2, -h);
+
+      h_iter++;
+    }
+
+  double norm = thread_utils::l2_norm (*this, m_v3, m_p_sized_buf);
+
+  if (t_id () == 0)
+    m_hessenberg[h_iter] = norm;
+
+  barrier_wait ();
+
+  if (norm < 1e-64)
+    return -1;
+
+  thread_utils::mult_vector_coef (*this, m_v3, 1 / norm);
+
+  if (t_id () == 0)
+    m_basis.insert (m_v3);
+
+  barrier_wait ();
+  return 0;
 }

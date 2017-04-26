@@ -1,38 +1,21 @@
-#ifndef MSR_PTHREAD_H
-#define MSR_PTHREAD_H
+#ifndef MSR_THREAD_DQGMRES_SOLVER_H
+#define MSR_THREAD_DQGMRES_SOLVER_H
 
 #include <vector>
-#include <pthread.h>
-#include "threads/thread_handler.h"
-#include "msr_matrix.h"
+#include "msr_thread_handler.h"
 #include "containers/cycle_buf.h"
+
+class msr_matrix;
 
 enum class preconditioner_type
 {
   jacobi
 };
 
-class msr_thread_handler : public thread_handler
+enum class solver_state
 {
-protected:
-  msr_matrix &m_matrix;
-  std::vector<double> &m_shared_buf;
-public:
-  msr_thread_handler (const int t, const int p, pthread_barrier_t *barrier,
-                      std::vector<double> &shared_buf,
-                      msr_matrix &matrix);
-  virtual ~msr_thread_handler ();
-
-  double aa (const int i) const;
-  void aa   (const int i, const double val);
-  int ja    (const int i) const;
-  void ja   (const int i, const double val);
-
-  std::vector<double> &shared_ref () const;
-  msr_matrix &matrix () const;
-
-  void mult_vector (const msr_matrix &shared_matrix, const std::vector<double> &in,
-                      std::vector<double> &out /*must be resized to n*/);
+  OK,
+  MAX_ITER
 };
 
 class msr_thread_dqgmres_solver : public msr_thread_handler
@@ -47,6 +30,7 @@ private:
   cycle_buf<std::vector<double>> &m_basis;
   cycle_buf<std::vector<double>> &m_basis_derivs;
   cycle_buf<std::vector<double>> &m_turns;
+  std::vector<double> &m_hessenberg;
   std::vector<double> &m_p_sized_buf;
   std::vector<double> &m_x;
   std::vector<double> &m_v2;
@@ -66,8 +50,9 @@ public:
                              cycle_buf<std::vector<double>> &basis_buf,
                              cycle_buf<std::vector<double>> &basis_derivs_buf,
                              cycle_buf<std::vector<double>> &turns_buf,
+                             std::vector<double> &hessenberg_buf,
                              std::vector<double> &p_sized_buf,
-                             std::vector<double> &v1_buf,
+                             std::vector<double> &x,
                              std::vector<double> &v2_buf,
                              std::vector<double> &v3_buf);
   ~msr_thread_dqgmres_solver ();
@@ -76,11 +61,12 @@ public:
 
   msr_matrix &precond () const;
 
-  void dqgmres_solve ();
+  solver_state dqgmres_solve ();
   void compute_preconditioner ();
   void apply_preconditioner ();
+  int compute_hessenberg_col (const int cur_iter);
 private:
   void synchronize ();
 };
 
-#endif // MSR_PTHREAD_H
+#endif // MSR_THREAD_DQGMRES_SOLVER_H

@@ -80,3 +80,27 @@ void thread_utils::mult_vector_coef (thread_handler &handler, std::vector<double
   for (int i = begin; i < begin + work; i++)
     shared_inout[i] *= coef;
 }
+
+double thread_utils::dot_product (thread_handler &handler, const std::vector<double> &in1,
+                                  const std::vector<double> &in2,
+                                  std::vector<double> &shared_buf)
+{
+  int n = in1.size ();
+  int begin, work;
+  handler.divide_work (n, begin, work);
+
+  double s = 0;
+  for (int i = begin; i < begin + work; i++)
+    s += in1[i] * in2[i];
+
+  shared_buf[handler.t_id ()] = s;
+  s = 0;
+
+  handler.barrier_wait ();
+
+  for (int i = 0; i < handler.p (); i++)
+    s += shared_buf[i];
+
+  handler.barrier_wait ();
+  return s;
+}

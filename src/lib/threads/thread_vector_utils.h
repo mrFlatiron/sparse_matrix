@@ -20,6 +20,10 @@ void lin_combination_1 (thread_handler &handler,
 double l2_norm (thread_handler &handler, const std::vector<double> &vect,
                 std::vector<double> &shared_buf /* p size */);
 
+double dot_product (thread_handler &handler, const std::vector<double> &in1,
+                    const std::vector<double> &in2,
+                    std::vector<double> &shared_buf /* p size */);
+
 void mult_vector_coef (thread_handler &handler, std::vector<double> &shared_inout,
                        const double coef);
 }

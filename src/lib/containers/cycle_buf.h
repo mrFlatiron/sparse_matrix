@@ -23,7 +23,7 @@ public:
   T &get_prev ();
   T &get_next ();
   void to_start ();
-  bool is_loop_done () const;
+  bool loop_done () const;
   void insert (const T &new_val);
   bool is_at_oldest () const;
   bool is_at_newest () const;
@@ -96,7 +96,7 @@ void cycle_buf<T>::to_start ()
 }
 
 template <class T>
-bool cycle_buf<T>::is_loop_done () const
+bool cycle_buf<T>::loop_done () const
 {
   return m_vals_looped == m_size;
 }

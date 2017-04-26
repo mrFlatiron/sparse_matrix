@@ -26,6 +26,7 @@ msr_thread_dqgmres_solver::msr_thread_dqgmres_solver (const int t, const int p,
   m_dim (dim),
   m_max_iter (max_iter),
   m_stop_criterion (stop_criterion),
+  m_flag (false),
   m_rhs (rhs),
   m_basis (basis_buf),
   m_basis_derivs (basis_derivs_buf),
@@ -58,10 +59,13 @@ solver_state msr_thread_dqgmres_solver::dqgmres_solve (const int cur_iter)
 {
   const double EPS = 1e-15;
   std::vector<double> &r = m_rhs;
+
   compute_preconditioner ();
   apply_preconditioner ();
+
   mult_vector_shared_out (m_precond, m_x, m_v2);
   thread_utils::lin_combination_1 (*this, r, m_v2, -1);
+
   double g1, g2;
   g1 = thread_utils::l2_norm (*this, r, m_shared_buf);
 
@@ -71,15 +75,15 @@ solver_state msr_thread_dqgmres_solver::dqgmres_solve (const int cur_iter)
   thread_utils::mult_vector_coef (*this, r, 1 / g1);
 
   if (t_id () == 0)
-    {
-      m_basis.insert (r);
-    }
+    m_basis.insert (r);
 
   barrier_wait ();
 
   for (int iter = 0; iter < m_max_iter; iter++)
     {
       compute_hessenberg_col (iter);
+      apply_turn_matrices (iter);
+
     }
 }
 
@@ -139,33 +143,41 @@ int msr_thread_dqgmres_solver::compute_hessenberg_col (const int cur_iter)
   mult_vector_shared_out (matrix (), m_basis.get_newest (), m_v2);
   mult_vector_shared_out (precond (), m_v2, m_v3);
 
-
-  if (t_id () == 0)
-    m_basis.to_start ();
-
   barrier_wait ();
 
-  while (!m_basis.loop_done ())
+  if (t_id () == 0)
+    m_basis.to_preoldest ();
+
+  while (1)
     {
       if (t_id () == 0)
-        m_v2 = m_basis.get_next ();
+        {
+          auto ptr = m_basis.get_next ();
+          if (!ptr)
+            m_flag = false;
+          else
+            {
+              m_v2 = *ptr;
+              m_flag = true;
+            }
+        }
+      barrier_wait ();
+      if (!m_flag)
+        break;
 
       double h = thread_utils::dot_product (*this, m_v2, m_v3, m_p_sized_buf);
-
       if (t_id () == 0)
         m_hessenberg[h_iter] = h;
-
       thread_utils::lin_combination_1 (*this, m_v3, m_v2, -h);
-
       h_iter++;
     }
+
+
 
   double norm = thread_utils::l2_norm (*this, m_v3, m_p_sized_buf);
 
   if (t_id () == 0)
     m_hessenberg[h_iter] = norm;
-
-  barrier_wait ();
 
   if (norm < 1e-64)
     return -1;
@@ -177,4 +189,40 @@ int msr_thread_dqgmres_solver::compute_hessenberg_col (const int cur_iter)
 
   barrier_wait ();
   return 0;
+}
+
+void msr_thread_dqgmres_solver::apply_turn_matrices (const int cur_iter)
+{
+  if (t_id () != 0)
+    {
+      barrier_wait ();
+      return;
+    }
+  int h_iter = (cur_iter < m_dim) ? 1 : 0;
+  auto turn_ptr = m_turns.get_oldest ();
+  if (!turn_ptr)
+    return;
+  double cos = turn_ptr->at (0);
+  double sin = turn_ptr->at (1);
+  double x = m_hessenberg[h_iter];
+  double y = m_hessenberg[h_iter + 1];
+
+  if (h_iter == 0)
+    {
+      m_hessenberg[h_iter] = y * sin;
+      m_hessenberg[h_iter + 1] = y * cos;
+      turn_ptr = m_turns.get_next ();
+      h_iter++;
+    }
+
+  for (; turn_ptr; turn_ptr = m_turns.get_next (), h_iter++)
+    {
+      x = m_hessenberg[h_iter];
+      y = m_hessenberg[h_iter + 1];
+      cos = turn_ptr->at (0);
+      sin = turn_ptr->at (1);
+      m_hessenberg[h_iter] = cos * x + sin * y;
+      m_hessenberg[h_iter + 1] = -sin * x + cos * y;
+    }
+  barrier_wait ();
 }

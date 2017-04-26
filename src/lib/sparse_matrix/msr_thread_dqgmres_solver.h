@@ -26,6 +26,7 @@ private:
   int m_dim;
   int m_max_iter;
   double m_stop_criterion;
+  bool &m_flag;
   std::vector<double> &m_rhs;
   cycle_buf<std::vector<double>> &m_basis;
   cycle_buf<std::vector<double>> &m_basis_derivs;
@@ -65,6 +66,7 @@ public:
   void compute_preconditioner ();
   void apply_preconditioner ();
   int compute_hessenberg_col (const int cur_iter);
+  void apply_turn_matrices (const int cur_iter);
 private:
   void synchronize ();
 };

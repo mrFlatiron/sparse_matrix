@@ -11,6 +11,7 @@ msr_thread_dqgmres_solver::msr_thread_dqgmres_solver (const int t, const int p,
                                                       const int dim,
                                                       const int max_iter,
                                                       const double stop_criterion,
+                                                      bool &flag,
                                                       std::vector<double> &rhs,
                                                       cycle_buf<std::vector<double>> &basis_buf,
                                                       cycle_buf<std::vector<double>> &basis_derivs_buf,
@@ -26,7 +27,7 @@ msr_thread_dqgmres_solver::msr_thread_dqgmres_solver (const int t, const int p,
   m_dim (dim),
   m_max_iter (max_iter),
   m_stop_criterion (stop_criterion),
-  m_flag (false),
+  m_flag (flag),
   m_rhs (rhs),
   m_basis (basis_buf),
   m_basis_derivs (basis_derivs_buf),
@@ -55,7 +56,7 @@ msr_matrix &msr_thread_dqgmres_solver::precond () const
 
 
 
-solver_state msr_thread_dqgmres_solver::dqgmres_solve (const int cur_iter)
+solver_state msr_thread_dqgmres_solver::dqgmres_solve ()
 {
   const double EPS = 1e-15;
   std::vector<double> &r = m_rhs;
@@ -140,7 +141,7 @@ int msr_thread_dqgmres_solver::compute_hessenberg_col (const int cur_iter)
 {
   int h_iter = 1;
 
-  mult_vector_shared_out (matrix (), m_basis.get_newest (), m_v2);
+  mult_vector_shared_out (matrix (), *(m_basis.get_newest ()), m_v2);
   mult_vector_shared_out (precond (), m_v2, m_v3);
 
   barrier_wait ();

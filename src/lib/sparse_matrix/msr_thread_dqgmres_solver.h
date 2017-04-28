@@ -47,6 +47,7 @@ public:
                              const int dim,
                              const int max_iter,
                              const double stop_criterion,
+                             bool &flag,
                              std::vector<double> &rhs,
                              cycle_buf<std::vector<double>> &basis_buf,
                              cycle_buf<std::vector<double>> &basis_derivs_buf,

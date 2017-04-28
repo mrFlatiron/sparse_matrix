@@ -35,7 +35,7 @@ cycle_buf<T>::~cycle_buf ()
 }
 
 template<class T>
-void cycle_buf::to_preoldest ()
+void cycle_buf<T>::to_preoldest ()
 {
   m_preoldest = true;
   m_pos = m_oldest;

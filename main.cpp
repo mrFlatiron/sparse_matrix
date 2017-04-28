@@ -53,18 +53,18 @@ int main (int argc, char *argv[])
   cycle_buf<std::vector<double>> basis (dim);
   cycle_buf<std::vector<double>> basis_derivs (dim);
   cycle_buf<std::vector<double>> turns (dim);
-  std::vector<double>> hessenberg (dim + 2);
+  std::vector<double> hessenberg (dim + 2);
 
-{
   std::vector<msr_thread_dqgmres_solver> handlers;
-
+  bool flag = false;
   for (int i = 0; i < p; i++)
     {
       handlers.push_back (msr_thread_dqgmres_solver
                           (i, p, &barrier, buf, msr, precond,
                            preconditioner_type::jacobi, dim,
-                           max_iter, stop_criterion, rhs,
+                           max_iter, stop_criterion, flag, rhs,
                            basis, basis_derivs, turns,
+                           hessenberg,
                            p_sized, v1, v2, v3));
     }
 
@@ -74,6 +74,5 @@ int main (int argc, char *argv[])
       pthread_create (&pt, NULL, solve, handlers.data () + t);
     }
   solve (handlers.data () + 0);
-}
   return 0;
 }

@@ -28,6 +28,7 @@ public:
   int ja (const int i) const;
   void ja (const int i, const double val);
   void set_diagonal (const std::vector<double> &diag_vals);
+  void mult_vector (const std::vector<double> &in, std::vector<double> &out);
 private:
   void print_row (FILE *fout, const int i, const int row_begin, const int row_end);
   void get_ja_row_bounds (const int i, int &begin, int &end);

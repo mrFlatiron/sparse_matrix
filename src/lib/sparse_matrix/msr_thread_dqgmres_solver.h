@@ -9,6 +9,7 @@ class msr_matrix;
 
 enum class preconditioner_type
 {
+  identity,
   jacobi
 };
 
@@ -68,6 +69,9 @@ public:
   void apply_preconditioner ();
   int compute_hessenberg_col (const int cur_iter);
   void apply_turn_matrices (const int cur_iter);
+  void compute_turn_matrix (const int cur_iter);
+  void apply_last_turn (const int cur_iter, double &g1, double &g2);
+  int compute_basis_deriv (const int cur_iter);
 private:
   void synchronize ();
 };

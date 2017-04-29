@@ -26,6 +26,9 @@ double dot_product (thread_handler &handler, const std::vector<double> &in1,
 
 void mult_vector_coef (thread_handler &handler, std::vector<double> &shared_inout,
                        const double coef);
+
+void copy_shared (thread_handler &handler, const std::vector<double> &shared_source,
+                  std::vector<double> &shared_out);
 }
 
 #endif // THREAD_VECTOR_UTILS_H

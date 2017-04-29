@@ -176,6 +176,22 @@ void msr_matrix::set_diagonal (const std::vector<double> &diag_vals)
     }
 }
 
+void msr_matrix::mult_vector (const std::vector<double> &in, std::vector<double> &out)
+{
+  int n = m_n;
+
+  for (int i = 0; i < n; i++)
+    {
+      double s = 0;
+      for (int ja_iter = ja (i); ja_iter < ja (i + 1); ja_iter++)
+        s += aa (ja_iter) * in[ja (ja_iter)];
+
+      s += aa (i) * in[i];
+      out[i] = s;
+    }
+
+}
+
 
 void msr_matrix::print_row (FILE *fout, const int i, const int row_begin, const int row_end)
 {

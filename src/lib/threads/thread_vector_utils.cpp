@@ -104,3 +104,16 @@ double thread_utils::dot_product (thread_handler &handler, const std::vector<dou
   handler.barrier_wait ();
   return s;
 }
+
+void thread_utils::copy_shared (thread_handler &handler, const std::vector<double> &shared_source,
+                                std::vector<double> &shared_out)
+{
+  int n = shared_source.size ();
+  int begin, work;
+  handler.divide_work (n, begin, work);
+
+  for (int i = begin; i < begin + work; i++)
+    shared_out[i] = shared_source[i];
+
+  handler.barrier_wait ();
+}

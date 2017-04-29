@@ -81,7 +81,7 @@ T *cycle_buf<T>::get_prev ()
 template <class T>
 T *cycle_buf<T>::get_next ()
 {
-  if (m_pos == m_newest || m_size == 0)
+  if ((m_pos == m_newest && !m_preoldest) || m_size == 0)
     return nullptr;
 
   if (m_preoldest)

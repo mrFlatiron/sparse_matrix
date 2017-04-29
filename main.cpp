@@ -34,12 +34,20 @@ int main (int argc, char *argv[])
       return 0;
     }
   msr_matrix msr;
-  msr.convert (n, {1, 0, 0, 2, 0,
-                   3, 4, 0, 0, 0,
-                   0, 0, 7, 0, 0,
-                   8, 9, 10, 11, 0,
-                   0, 0, 0, 0, 12});
+  msr.convert (n, {1, 0, 0, 0, 0,
+                   0, 2, 3, 0, 0,
+                   0, 4, 1, 0, 0,
+                   0, 2, 1, 3, 0,
+                   0, 0, 0, 2, 1});
+
+  msr_matrix save;
+  save = msr;
   msr.dump ();
+
+  std::vector<double> x (n);
+
+  for (int i = 0; i < n; i++)
+    x[i] = i & 1;
 
   msr_matrix precond;
 
@@ -47,8 +55,10 @@ int main (int argc, char *argv[])
   pthread_barrier_init (&barrier, NULL, p);
   pthread_t pt;
   std::vector<double> buf (n);
-  std::vector<double> v1 (n), v2 (n), v3 (n), p_sized (p);
-  std::vector<double> rhs ({1, 2, 3, 4, 5});
+  std::vector<double> v1 (n, 0), v2 (n), v3 (n), p_sized (p);
+  std::vector<double> rhs (n);
+  msr.mult_vector (x, rhs);
+  std::vector<double> rhs_save (rhs);
 
   cycle_buf<std::vector<double>> basis (dim);
   cycle_buf<std::vector<double>> basis_derivs (dim);
@@ -61,7 +71,7 @@ int main (int argc, char *argv[])
     {
       handlers.push_back (msr_thread_dqgmres_solver
                           (i, p, &barrier, buf, msr, precond,
-                           preconditioner_type::jacobi, dim,
+                           preconditioner_type::identity, dim,
                            max_iter, stop_criterion, flag, rhs,
                            basis, basis_derivs, turns,
                            hessenberg,
@@ -74,5 +84,12 @@ int main (int argc, char *argv[])
       pthread_create (&pt, NULL, solve, handlers.data () + t);
     }
   solve (handlers.data () + 0);
+
+  std::vector<double> rhs_comp (n);
+  save.mult_vector (v1, rhs_comp);
+
+  for (int i = 0; i < n; i++)
+    printf ("rhs_comp[%d] = %lf\n", i, rhs_comp[i] - rhs_save[i]);
+
   return 0;
 }

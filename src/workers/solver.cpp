@@ -46,8 +46,12 @@ void *test (void *args)
       handler.matrix ().dump ();
     }
 
+  thread_utils::l2_norm (handler, in, handler.p_sized_buf ());
 
+  if (handler.t_id () == 0)
+      printf ("l2")
 
+    return args;
 }
 
 void *solve(void *args)
@@ -55,4 +59,5 @@ void *solve(void *args)
     msr_thread_dqgmres_solver handler (*((msr_thread_dqgmres_solver *)args));
 
     handler.dqgmres_solve ();
+    return args;
 }

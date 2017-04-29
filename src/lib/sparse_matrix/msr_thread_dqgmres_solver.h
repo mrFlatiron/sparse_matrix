@@ -60,14 +60,14 @@ public:
                              std::vector<double> &v3_buf);
   ~msr_thread_dqgmres_solver ();
 
-
+  std::vector<double> &p_sized_buf () const;
 
   msr_matrix &precond () const;
 
   solver_state dqgmres_solve ();
   void compute_preconditioner ();
   void apply_preconditioner ();
-  int compute_hessenberg_col (const int cur_iter);
+  int compute_hessenberg_col ();
   void apply_turn_matrices (const int cur_iter);
   void compute_turn_matrix (const int cur_iter);
   void apply_last_turn (const int cur_iter, double &g1, double &g2);

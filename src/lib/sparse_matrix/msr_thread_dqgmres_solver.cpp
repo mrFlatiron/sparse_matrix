@@ -48,6 +48,11 @@ msr_thread_dqgmres_solver::~msr_thread_dqgmres_solver ()
 
 }
 
+std::vector<double> &msr_thread_dqgmres_solver::p_sized_buf () const
+{
+  return m_p_sized_buf;
+}
+
 
 
 msr_matrix &msr_thread_dqgmres_solver::precond () const
@@ -95,7 +100,7 @@ solver_state msr_thread_dqgmres_solver::dqgmres_solve ()
 
   for (int iter = 1; iter <= m_max_iter; iter++)
     {
-      if (compute_hessenberg_col (iter))
+      if (compute_hessenberg_col ())
         {
           if (t_id () == 0)
             printf ("zero division after chc\n");
@@ -191,11 +196,13 @@ void msr_thread_dqgmres_solver::apply_preconditioner ()
         barrier_wait ();
         return;
       }
+  case preconditioner_type::identity:
+      return;
     }
   return;
 }
 
-int msr_thread_dqgmres_solver::compute_hessenberg_col (const int cur_iter)
+int msr_thread_dqgmres_solver::compute_hessenberg_col ()
 {
   int h_iter = 1;
 

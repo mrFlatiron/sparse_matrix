@@ -18,11 +18,11 @@ HEADERS += \
     src/lib/sparse_matrix/msr_matrix.h \
     src/lib/sparse_matrix/msr_algo.h \
     src/workers/solver.h \
-    src/lib/containers/cycle_buf.h \
     src/lib/threads/thread_vector_utils.h \
     src/lib/threads/thread_handler.h \
     src/lib/sparse_matrix/msr_thread_handler.h \
-    src/lib/sparse_matrix/msr_thread_dqgmres_solver.h
+    src/lib/sparse_matrix/msr_thread_dqgmres_solver.h \
+    src/lib/containers/limited_deque.h
 
 INCLUDEPATH += src/
 INCLUDEPATH += src/lib

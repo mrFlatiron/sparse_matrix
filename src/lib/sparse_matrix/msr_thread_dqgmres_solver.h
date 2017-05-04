@@ -3,7 +3,7 @@
 
 #include <vector>
 #include "msr_thread_handler.h"
-#include "containers/cycle_buf.h"
+#include "containers/limited_deque.h"
 
 class msr_matrix;
 
@@ -16,12 +16,13 @@ enum class preconditioner_type
 enum class solver_state
 {
   OK,
+  TOO_SLOW,
   MAX_ITER
 };
 
 class msr_thread_dqgmres_solver : public msr_thread_handler
 {
-private:
+public:
   msr_matrix &m_precond; //shared precond
   preconditioner_type m_precond_type;
   int m_dim;
@@ -29,14 +30,14 @@ private:
   double m_stop_criterion;
   bool &m_flag;
   std::vector<double> &m_rhs;
-  cycle_buf<std::vector<double>> &m_basis;
-  cycle_buf<std::vector<double>> &m_basis_derivs;
-  cycle_buf<std::vector<double>> &m_turns;
+  limited_deque<std::vector<double>> &m_basis;
+  limited_deque<std::vector<double>> &m_basis_derivs;
+  limited_deque<std::vector<double>> &m_turns;
   std::vector<double> &m_hessenberg;
   std::vector<double> &m_p_sized_buf;
   std::vector<double> &m_x;
+  std::vector<double> &m_v1;
   std::vector<double> &m_v2;
-  std::vector<double> &m_v3;
 
 public:
   msr_thread_dqgmres_solver (const int t, const int p,
@@ -50,14 +51,14 @@ public:
                              const double stop_criterion,
                              bool &flag,
                              std::vector<double> &rhs,
-                             cycle_buf<std::vector<double>> &basis_buf,
-                             cycle_buf<std::vector<double>> &basis_derivs_buf,
-                             cycle_buf<std::vector<double>> &turns_buf,
+                             limited_deque<std::vector<double>> &basis_buf,
+                             limited_deque<std::vector<double>> &basis_derivs_buf,
+                             limited_deque<std::vector<double>> &turns_buf,
                              std::vector<double> &hessenberg_buf,
                              std::vector<double> &p_sized_buf,
                              std::vector<double> &x,
-                             std::vector<double> &v2_buf,
-                             std::vector<double> &v3_buf);
+                             std::vector<double> &v1_buf,
+                             std::vector<double> &v2_buf);
   ~msr_thread_dqgmres_solver ();
 
   std::vector<double> &p_sized_buf () const;

@@ -1,6 +1,7 @@
 #include "thread_vector_utils.h"
 #include "thread_handler.h"
 #include <cmath>
+#include <cstdio>
 
 
 void thread_utils::lin_combination_1 (thread_handler &handler,
@@ -42,7 +43,6 @@ void thread_utils::lin_combination_1 (thread_handler &handler,
     {
       shared_inout[i] += add[i] * coef;
     }
-
   handler.barrier_wait ();
 }
 
@@ -79,6 +79,8 @@ void thread_utils::mult_vector_coef (thread_handler &handler, std::vector<double
 
   for (int i = begin; i < begin + work; i++)
     shared_inout[i] *= coef;
+
+  handler.barrier_wait ();
 }
 
 double thread_utils::dot_product (thread_handler &handler, const std::vector<double> &in1,

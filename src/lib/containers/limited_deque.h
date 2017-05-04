@@ -3,9 +3,10 @@
 
 #include <vector>
 #include <cstdio>
+#include "threads/thread_handler.h"
 
 template <class T>
-class cycle_buf
+class limited_deque
 {
 private:
   int m_capacity;
@@ -16,8 +17,8 @@ private:
   int m_newest;
   std::vector<T> m_vals;
 public:
-  cycle_buf (const int capacity);
-  ~cycle_buf ();
+  limited_deque (const int capacity);
+  ~limited_deque ();
   void to_preoldest ();
   T *get_oldest ();
   T *get_newest ();
@@ -29,20 +30,20 @@ public:
 
 
 template <class T>
-cycle_buf<T>::~cycle_buf ()
+limited_deque<T>::~limited_deque ()
 {
 
 }
 
 template<class T>
-void cycle_buf<T>::to_preoldest ()
+void limited_deque<T>::to_preoldest ()
 {
   m_preoldest = true;
   m_pos = m_oldest;
 }
 
 template <class T>
-T *cycle_buf<T>::get_oldest ()
+T *limited_deque<T>::get_oldest ()
 {
   m_preoldest = false;
   if (m_size == 0)
@@ -53,7 +54,7 @@ T *cycle_buf<T>::get_oldest ()
 }
 
 template <class T>
-T *cycle_buf<T>::get_newest ()
+T *limited_deque<T>::get_newest ()
 {
   m_preoldest = false;
   if (m_size == 0)
@@ -64,7 +65,7 @@ T *cycle_buf<T>::get_newest ()
 }
 
 template <class T>
-T *cycle_buf<T>::get_prev ()
+T *limited_deque<T>::get_prev ()
 {
   m_preoldest = false;
   if  (m_pos == m_oldest || m_size == 0)
@@ -79,7 +80,7 @@ T *cycle_buf<T>::get_prev ()
 }
 
 template <class T>
-T *cycle_buf<T>::get_next ()
+T *limited_deque<T>::get_next ()
 {
   if ((m_pos == m_newest && !m_preoldest) || m_size == 0)
     return nullptr;
@@ -100,7 +101,7 @@ T *cycle_buf<T>::get_next ()
 }
 
 template <class T>
-void cycle_buf<T>::insert (const T &new_val)
+void limited_deque<T>::insert (const T &new_val)
 {
   if (m_size < m_capacity)
     {
@@ -117,7 +118,7 @@ void cycle_buf<T>::insert (const T &new_val)
 }
 
 template <class T>
-cycle_buf<T>::cycle_buf (const int capacity) :
+limited_deque<T>::limited_deque (const int capacity) :
   m_size (0),
   m_pos (0),
   m_preoldest (false),
@@ -133,5 +134,31 @@ cycle_buf<T>::cycle_buf (const int capacity) :
     m_capacity = capacity;
 
   m_vals.resize (m_capacity);
+}
+
+namespace thread_utils
+{
+  template <class T>
+  bool limited_deque_get_next (thread_handler &handler, limited_deque<T> &deque,
+                               T &shared_out,
+                               bool &shared_flag)
+  {
+    T *ptr;
+    if (handler.t_id () == 0)
+      {
+        ptr = deque.get_next ();
+        if (!ptr)
+          shared_flag = false;
+        else
+          {
+            shared_flag = true;
+            shared_out = *ptr;
+          }
+        handler.barrier_wait ();
+      }
+    else
+      handler.barrier_wait ();
+    return shared_flag;
+  }
 }
 #endif // CYCLE_BUF_H

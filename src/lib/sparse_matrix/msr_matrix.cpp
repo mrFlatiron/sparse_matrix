@@ -4,7 +4,8 @@
 
 msr_matrix::msr_matrix ()
 {
-
+  m_arr_size = 0;
+  m_n = 0;
 }
 
 msr_matrix::~msr_matrix()
@@ -28,14 +29,14 @@ void msr_matrix::dump (FILE *fout)
   for (int i = 0; i< m_arr_size; i++)
     fprintf (fout, "%d ", m_ja[i]);
 
-//  fprintf (fout, "\nConventional view:\n");
+  fprintf (fout, "\nConventional view:\n");
 
-//  for (int i = 0; i < m_n; i++)
-//    {
-//      int row_begin, row_end;
-//      get_ja_row_bounds (i, row_begin, row_end);
-//      print_row (fout, i , row_begin, row_end);
-//    }
+  for (int i = 0; i < m_n; i++)
+    {
+      int row_begin, row_end;
+      get_ja_row_bounds (i, row_begin, row_end);
+      print_row (fout, i , row_begin, row_end);
+    }
   fprintf (fout, "===================\n");
 }
 

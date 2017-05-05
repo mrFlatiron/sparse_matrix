@@ -1,4 +1,5 @@
 #include "msr_thread_dqgmres_solver.h"
+#include "msr_dqgmres_initializer.h"
 #include "msr_matrix.h"
 #include "threads/thread_vector_utils.h"
 #include "containers/simple_vector.h"
@@ -43,6 +44,30 @@ msr_thread_dqgmres_solver::msr_thread_dqgmres_solver (const int t, const int p,
   m_v2 (v2_buf)
 {
 
+
+}
+
+msr_thread_dqgmres_solver::msr_thread_dqgmres_solver (const int t,
+                                                      msr_dqgmres_initializer &initializer) :
+  msr_thread_handler (t, initializer.m_p, &(initializer.m_barrier),
+                      initializer.m_shared_bufs[t], initializer.m_matrix),
+  m_precond (initializer.m_precond),
+  m_precond_type (initializer.m_precond_type),
+  m_dim (initializer.m_dim),
+  m_max_iter (initializer.m_max_iter),
+  m_stop_criterion (initializer.m_stop_criterion),
+  m_flag (initializer.m_flag),
+  m_rhs (initializer.m_rhs),
+  m_rhs_save (initializer.m_rhs_save),
+  m_basis (initializer.m_basis),
+  m_basis_derivs (initializer.m_basis_derivs),
+  m_turns (initializer.m_turns),
+  m_hessenberg (initializer.m_hessenberg),
+  m_p_sized_buf (initializer.m_p_sized_buf),
+  m_x (initializer.m_x_inout),
+  m_v1 (&(initializer.m_v1)),
+  m_v2 (initializer.m_v2)
+{
 
 }
 

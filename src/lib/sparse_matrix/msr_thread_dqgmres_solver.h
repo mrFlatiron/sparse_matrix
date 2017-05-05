@@ -6,6 +6,8 @@
 #include "containers/limited_deque.h"
 #include "containers/simple_vector.h"
 
+class msr_dqgmres_initializer;
+
 class msr_matrix;
 
 enum class preconditioner_type
@@ -63,6 +65,7 @@ public:
                              simple_vector &x,
                              simple_vector **v1_buf,
                              simple_vector &v2_buf);
+  msr_thread_dqgmres_solver (const int t, msr_dqgmres_initializer &initializer);
   ~msr_thread_dqgmres_solver ();
 
   simple_vector &p_sized_buf () const;

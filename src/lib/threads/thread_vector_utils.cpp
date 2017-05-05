@@ -2,13 +2,14 @@
 #include "thread_handler.h"
 #include <cmath>
 #include <cstdio>
+#include "containers/simple_vector.h"
 
 
 void thread_utils::lin_combination_1 (thread_handler &handler,
-                        std::vector<double> &shared,
-                        const std::vector<double> &in,
-                        std::vector<double> &out,
-                        const std::vector<double> &add,
+                        simple_vector &shared,
+                        const simple_vector &in,
+                        simple_vector &out,
+                        const simple_vector &add,
                         const double coef)
 {
   const int n = in.size ();
@@ -31,8 +32,8 @@ void thread_utils::lin_combination_1 (thread_handler &handler,
 }
 
 void thread_utils::lin_combination_1 (thread_handler &handler,
-                                      std::vector<double> &shared_inout,
-                                      const std::vector<double> &add,
+                                      simple_vector &shared_inout,
+                                      const simple_vector &add,
                                       const double coef)
 {
   const int n = shared_inout.size ();
@@ -46,8 +47,8 @@ void thread_utils::lin_combination_1 (thread_handler &handler,
   handler.barrier_wait ();
 }
 
-double thread_utils::l2_norm (thread_handler &handler, const std::vector<double> &vect,
-                std::vector<double> &shared_buf /* p size */)
+double thread_utils::l2_norm (thread_handler &handler, const simple_vector &vect,
+                simple_vector &shared_buf /* p size */)
 {
   int n = vect.size ();
   int begin, work;
@@ -70,7 +71,7 @@ double thread_utils::l2_norm (thread_handler &handler, const std::vector<double>
   return sqrt (s);
 }
 
-void thread_utils::mult_vector_coef (thread_handler &handler, std::vector<double> &shared_inout,
+void thread_utils::mult_vector_coef (thread_handler &handler, simple_vector &shared_inout,
                                      const double coef)
 {
   int n = shared_inout.size ();
@@ -83,9 +84,9 @@ void thread_utils::mult_vector_coef (thread_handler &handler, std::vector<double
   handler.barrier_wait ();
 }
 
-double thread_utils::dot_product (thread_handler &handler, const std::vector<double> &in1,
-                                  const std::vector<double> &in2,
-                                  std::vector<double> &shared_buf)
+double thread_utils::dot_product (thread_handler &handler, const simple_vector &in1,
+                                  const simple_vector &in2,
+                                  simple_vector &shared_buf)
 {
   int n = in1.size ();
   int begin, work;
@@ -107,8 +108,8 @@ double thread_utils::dot_product (thread_handler &handler, const std::vector<dou
   return s;
 }
 
-void thread_utils::copy_shared (thread_handler &handler, const std::vector<double> &shared_source,
-                                std::vector<double> &shared_out)
+void thread_utils::copy_shared (thread_handler &handler, const simple_vector &shared_source,
+                                simple_vector &shared_out)
 {
   int n = shared_source.size ();
   int begin, work;

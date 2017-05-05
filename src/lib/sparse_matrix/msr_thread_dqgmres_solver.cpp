@@ -1,11 +1,12 @@
 #include "msr_thread_dqgmres_solver.h"
 #include "msr_matrix.h"
 #include "threads/thread_vector_utils.h"
+#include "containers/simple_vector.h"
 #include <cmath>
 
 msr_thread_dqgmres_solver::msr_thread_dqgmres_solver (const int t, const int p,
                                                       pthread_barrier_t *barrier,
-                                                      std::vector<double> &shared_buf,
+                                                      simple_vector &shared_buf,
                                                       msr_matrix &matrix,
                                                       msr_matrix &precond,
                                                       const preconditioner_type type,
@@ -13,15 +14,16 @@ msr_thread_dqgmres_solver::msr_thread_dqgmres_solver (const int t, const int p,
                                                       const int max_iter,
                                                       const double stop_criterion,
                                                       bool &flag,
-                                                      std::vector<double> &rhs,
-                                                      limited_deque<std::vector<double>> &basis_buf,
-                                                      limited_deque<std::vector<double>> &basis_derivs_buf,
-                                                      limited_deque<std::vector<double>> &turns_buf,
-                                                      std::vector<double> &hessenberg_buf,
-                                                      std::vector<double> &p_sized_buf,
-                                                      std::vector<double> &x,
-                                                      std::vector<double> &v1_buf,
-                                                      std::vector<double> &v2_buf):
+                                                      simple_vector &rhs,
+                                                      simple_vector &rhs_save,
+                                                      limited_deque<simple_vector> &basis_buf,
+                                                      limited_deque<simple_vector> &basis_derivs_buf,
+                                                      limited_deque<simple_vector> &turns_buf,
+                                                      simple_vector &hessenberg_buf,
+                                                      simple_vector &p_sized_buf,
+                                                      simple_vector &x,
+                                                      simple_vector **v1_buf,
+                                                      simple_vector &v2_buf):
   msr_thread_handler (t, p, barrier, shared_buf, matrix),
   m_precond (precond),
   m_precond_type (type),
@@ -30,6 +32,7 @@ msr_thread_dqgmres_solver::msr_thread_dqgmres_solver (const int t, const int p,
   m_stop_criterion (stop_criterion),
   m_flag (flag),
   m_rhs (rhs),
+  m_rhs_save (rhs_save),
   m_basis (basis_buf),
   m_basis_derivs (basis_derivs_buf),
   m_turns (turns_buf),
@@ -48,7 +51,7 @@ msr_thread_dqgmres_solver::~msr_thread_dqgmres_solver ()
 
 }
 
-std::vector<double> &msr_thread_dqgmres_solver::p_sized_buf () const
+simple_vector &msr_thread_dqgmres_solver::p_sized_buf () const
 {
   return m_p_sized_buf;
 }
@@ -66,65 +69,80 @@ solver_state msr_thread_dqgmres_solver::dqgmres_solve ()
 {
   const double EPS = 1e-10;
 
-  double rhs_norm = thread_utils::l2_norm (*this, m_rhs, m_p_sized_buf);
+
 
   compute_preconditioner ();
   apply_preconditioner ();
 
   mult_vector_shared_out (m_precond, m_rhs, m_v2);
   thread_utils::copy_shared (*this, m_v2, m_rhs);
+  thread_utils::copy_shared (*this, m_rhs, m_rhs_save);
 
-  double g1 = rhs_norm;
-
-
-  if (g1 < EPS)
-    return solver_state::OK;
-
-  double g2;
-
-  thread_utils::mult_vector_coef (*this, m_rhs, 1 / g1);
-
-  if (t_id () == 0)
-    m_basis.insert (m_rhs);
-
-  barrier_wait ();
-
-  for (int iter = 1; iter <= m_max_iter; iter++)
+  for (int global_iter = 0; global_iter < 10; global_iter++)
     {
-      bool exact_solution = false;
-      if (compute_hessenberg_col ())
-        {
-          if (t_id () == 0)
-            printf ("Exact solution!\n");
-          exact_solution = true;
-        }
-      apply_turn_matrices (iter);
-      compute_turn_matrix (iter);
-      apply_last_turn (iter, g1, g2);
-      if (compute_basis_deriv (iter))
-        {
-          return solver_state::TOO_SLOW;
-        }
+      if (t_id () == 0)
+        printf ("Restarting\n");
+
+      m_turns.clear ();
+      m_basis_derivs.clear ();
+      m_basis.clear ();
+
+      mult_vector_shared_out (m_matrix, m_x, m_v2);
+      thread_utils::copy_shared (*this, m_rhs_save, m_rhs);
+      thread_utils::lin_combination_1 (*this, m_rhs, m_v2, -1);
+
+      double rhs_norm = thread_utils::l2_norm (*this, m_rhs, m_p_sized_buf);
+      double g1 = rhs_norm;
+
+
+      if (g1 < EPS)
+        return solver_state::OK;
+
+      double g2;
+
+      thread_utils::mult_vector_coef (*this, m_rhs, 1 / g1);
 
       if (t_id () == 0)
-        m_v1 = *(m_basis_derivs.get_newest ());
+        m_basis.insert (m_rhs);
+
       barrier_wait ();
-      thread_utils::lin_combination_1 (*this, m_x, m_v1, g1);
-      if (exact_solution)
-        return solver_state::OK;
-      double residual = fabs (g2);
 
-      if (t_id () == 0)
-        printf ("\tit=%3d, residual = %le\n", iter, residual);
+      for (int iter = 1; iter <= m_max_iter; iter++)
+        {
+          bool exact_solution = false;
+          if (compute_hessenberg_col ())
+            {
+              if (t_id () == 0)
+                printf ("Exact solution!\n");
+              exact_solution = true;
+            }
+          apply_turn_matrices (iter);
+          compute_turn_matrix (iter);
+          apply_last_turn (iter, g1, g2);
+          if (compute_basis_deriv (iter))
+            {
+              return solver_state::TOO_SLOW;
+            }
 
-      if (residual < m_stop_criterion)
-        return solver_state::OK;
+          if (t_id () == 0)
+            *m_v1 = m_basis_derivs.get_newest ();
+          barrier_wait ();
+          thread_utils::lin_combination_1 (*this, m_x, **m_v1, g1);
+          if (exact_solution)
+            return solver_state::OK;
+          double residual = fabs (g2);
+
+          if (t_id () == 0)
+            printf ("\tit=%3d, residual = %le\n", iter, residual);
+
+          if (residual < m_stop_criterion)
+            return solver_state::OK;
 
 
-      g1 = g2;
+          g1 = g2;
 
+        }
     }
-
   return solver_state::MAX_ITER;
 }
 
@@ -155,6 +173,8 @@ void msr_thread_dqgmres_solver::compute_preconditioner ()
           m_precond.aa (i, 1 / m_matrix.aa (i));
           m_precond.ja (i, n);
           break;
+        case preconditioner_type::ilu0:
+          break;
         }
     }
 
@@ -183,6 +203,38 @@ void msr_thread_dqgmres_solver::apply_preconditioner ()
       }
     case preconditioner_type::identity:
       break;
+    case preconditioner_type::ilu0:
+      {
+        if (t_id () != 0)
+          break;
+        for (int i = 1; i < m_matrix.n (); i++)
+          {
+            int begin, end;
+            m_matrix.get_ja_row_bounds (i, begin, end);
+            int ja_iter = begin;
+            while (m_matrix.ja (ja_iter) < i && ja_iter < end)
+              {
+                int k = m_matrix.ja (ja_iter);
+                int k_begin, k_end;
+                m_matrix.get_ja_row_bounds (k, k_begin, k_end);
+                m_matrix.aa (ja_iter, m_matrix.aa (ja_iter) / m_matrix.aa (k));
+                double val = m_matrix.aa (ja_iter);
+                int ja_iter1 = ja_iter + 1;
+                int k_ja_iter = k_begin;
+                for (; k_ja_iter < k_end && m_matrix.ja (k_ja_iter) <= k; k_ja_iter++)
+                while (ja_iter1 < end && k_ja_iter < k_end)
+                  {
+                    double newval = m_matrix.aa (ja_iter1);
+                    newval -= val * m_matrix.aa (k_ja_iter);
+                    m_matrix.aa (ja_iter1, newval);
+                    k_ja_iter++;
+                    ja_iter1++;
+                  }
+                ja_iter++;
+              }
+          }
+      }
+      break;
     }
   barrier_wait ();
   return;
@@ -197,13 +249,13 @@ int msr_thread_dqgmres_solver::compute_hessenberg_col ()
   if (t_id () == 0)
     m_basis.to_preoldest ();
 
-  while (thread_utils::limited_deque_get_next<std::vector<double> >
+  while (thread_utils::limited_deque_get_next<simple_vector>
          (*this, m_basis, m_v1, m_flag))
     {
-      double h = thread_utils::dot_product (*this, m_v1, m_v2, m_p_sized_buf);
+      double h = thread_utils::dot_product (*this, **m_v1, m_v2, m_p_sized_buf);
       if (t_id () == 0)
         m_hessenberg[h_iter] = h;
-      thread_utils::lin_combination_1 (*this, m_v2, m_v1, -h);
+      thread_utils::lin_combination_1 (*this, m_v2, **m_v1, -h);
       h_iter++;
     }
 
@@ -285,7 +337,11 @@ void msr_thread_dqgmres_solver::compute_turn_matrix (const int cur_iter)
   double cos = h_mm / s;
   double sin = h_m1m / s;
 
-  m_turns.insert ({cos, sin});
+  simple_vector to_insert (2);
+  to_insert[0] = cos;
+  to_insert[1] = sin;
+
+  m_turns.insert (to_insert);
   barrier_wait ();
 }
 
@@ -331,14 +387,13 @@ int msr_thread_dqgmres_solver::compute_basis_deriv (const int cur_iter)
   if (t_id () == 0)
     m_basis_derivs.to_preoldest ();
 
-  while (thread_utils::limited_deque_get_next<std::vector<double> >
+  while (thread_utils::limited_deque_get_next<simple_vector >
          (*this, m_basis_derivs, m_v1, m_flag))
     {
-      thread_utils::lin_combination_1 (*this, m_v2, m_v1, -m_hessenberg[h_iter]);
+      thread_utils::lin_combination_1 (*this, m_v2, **m_v1, -m_hessenberg[h_iter]);
       h_iter++;
     }
 
-  printf ("h_iter = %d\n", h_iter);
   if (fabs (m_hessenberg[h_iter]) < 1e-64)
     {
       barrier_wait ();

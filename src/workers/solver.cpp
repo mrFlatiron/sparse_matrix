@@ -48,17 +48,17 @@ void *test (void *args)
 //      handler.matrix ().dump ();
 //    }
 
-  for (int i = 0; i < 100; i++)
-    thread_utils::lin_combination_1 (handler, handler.m_rhs, handler.m_v1, 1);
+//  for (int i = 0; i < 100; i++)
+//    thread_utils::lin_combination_1 (handler, handler.m_rhs, handler.m_v1, 1);
 
-  for (int i = 0; i < 100; i++)
-    thread_utils::l2_norm (handler, handler.m_rhs, handler.m_p_sized_buf);
+//  for (int i = 0; i < 100; i++)
+//    thread_utils::l2_norm (handler, handler.m_rhs, handler.m_p_sized_buf);
 
-  for (int i = 0; i < 100; i++)
-    thread_utils::copy_shared (handler, handler.m_rhs, handler.m_v1);
+//  for (int i = 0; i < 100; i++)
+//    thread_utils::copy_shared (handler, handler.m_rhs, handler.m_v1);
 
-  for (int i = 0; i < 100; i++)
-    handler.mult_vector_shared_out (handler.matrix (), handler.m_rhs, handler.m_v1);
+//  for (int i = 0; i < 100; i++)
+//    handler.mult_vector_shared_out (handler.matrix (), handler.m_rhs, handler.m_v1);
 
     return args;
 }

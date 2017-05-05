@@ -25,6 +25,7 @@ public:
   T *get_prev ();
   T *get_next ();
   void insert (const T &new_val);
+  void clear ();
 };
 
 
@@ -117,6 +118,16 @@ void limited_deque<T>::insert (const T &new_val)
   m_oldest = (m_oldest + 1) % m_size;
 }
 
+template<class T>
+void limited_deque<T>::clear ()
+{
+  m_size = 0;
+  m_pos = 0;
+  m_preoldest = false;
+  m_oldest = 0;
+  m_newest = 0;
+}
+
 template <class T>
 limited_deque<T>::limited_deque (const int capacity) :
   m_size (0),
@@ -140,7 +151,7 @@ namespace thread_utils
 {
   template <class T>
   bool limited_deque_get_next (thread_handler &handler, limited_deque<T> &deque,
-                               T &shared_out,
+                               T **shared_out,
                                bool &shared_flag)
   {
     T *ptr;
@@ -152,7 +163,7 @@ namespace thread_utils
         else
           {
             shared_flag = true;
-            shared_out = *ptr;
+            *shared_out = ptr;
           }
         handler.barrier_wait ();
       }

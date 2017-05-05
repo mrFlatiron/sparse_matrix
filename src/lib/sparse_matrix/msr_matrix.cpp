@@ -28,18 +28,18 @@ void msr_matrix::dump (FILE *fout)
   for (int i = 0; i< m_arr_size; i++)
     fprintf (fout, "%d ", m_ja[i]);
 
-  fprintf (fout, "\nConventional view:\n");
+//  fprintf (fout, "\nConventional view:\n");
 
-  for (int i = 0; i < m_n; i++)
-    {
-      int row_begin, row_end;
-      get_ja_row_bounds (i, row_begin, row_end);
-      print_row (fout, i , row_begin, row_end);
-    }
+//  for (int i = 0; i < m_n; i++)
+//    {
+//      int row_begin, row_end;
+//      get_ja_row_bounds (i, row_begin, row_end);
+//      print_row (fout, i , row_begin, row_end);
+//    }
   fprintf (fout, "===================\n");
 }
 
-void msr_matrix::convert (const int n, std::vector<double> matrix)
+void msr_matrix::convert (const int n, simple_vector matrix)
 {
   m_n = n;
   int ja_iter = m_n + 1;
@@ -163,7 +163,7 @@ void msr_matrix::ja (const int i, const double val)
   m_ja[i] = val;
 }
 
-void msr_matrix::set_diagonal (const std::vector<double> &diag_vals)
+void msr_matrix::set_diagonal (const simple_vector &diag_vals)
 {
   m_n = diag_vals.size ();
   m_arr_size = m_n + 1;
@@ -176,7 +176,7 @@ void msr_matrix::set_diagonal (const std::vector<double> &diag_vals)
     }
 }
 
-void msr_matrix::mult_vector (const std::vector<double> &in, std::vector<double> &out)
+void msr_matrix::mult_vector (const simple_vector &in, simple_vector &out)
 {
   int n = m_n;
 
